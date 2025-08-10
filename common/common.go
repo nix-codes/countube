@@ -3,7 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/jpeg"
@@ -50,26 +50,31 @@ func UrlExists(url string) bool {
 }
 
 func DownloadFile(URL, fileName string) error {
-	// get the response bytes from the url
-	response, err := http.Get(URL)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
 
-	if response.StatusCode != 200 {
-		return errors.New("Received non 200 response code")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Received non 200 response code: %d", resp.StatusCode)
 	}
 
-	// create a empty file
 	file, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	// write the bytes to the fie
-	_, err = io.Copy(file, response.Body)
+	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
