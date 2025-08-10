@@ -18,8 +18,9 @@ func main() {
 		CountuneSpeed:   1,
 		VideoWidth:      1920,
 		VideoHeight:     1080,
-		VideoLen:        150,
+		VideoLen:        1800,
 		BackgroundColor: color.Black,
+		Loop:            true, // making it true will ignore the title-related params
 		TitleUpperText: []string{
 			"Band Name",
 			"Some Album Name [1984]",
@@ -34,18 +35,10 @@ func main() {
 				Text:         "1. First Track",
 				StartSeconds: 0,
 			},
-			{
-				Text:         "2. Second Track",
-				StartSeconds: 45,
-			},
-			{
-				Text:         "3. Third Track",
-				StartSeconds: 120,
-			},
 		},
 	}
 
-	countune.UpdateLocalCache()
+	// countune.UpdateLocalCache()
 	countune.PrepareImagesForVideo(vidCfg)
 	countune.GenerateImageScrollVideo(vidCfg)
 

@@ -30,7 +30,7 @@ type countuneMeta struct {
 func PrepareImagesForVideo(vidCfg VideoConfig) {
 	common.EnsurePath(OutputPath)
 
-	numCountuneBars, countuneWidth := calculateCountuneSizeForVideo(vidCfg)
+	numCountuneBars, numCountuneBarsForLoop, countuneWidth := calculateCountuneSizeForVideo(vidCfg)
 	countuneVideoImg := image.NewRGBA(image.Rect(0, 0, countuneWidth, vidCfg.VideoHeight))
 	bgImage := image.NewUniform(vidCfg.BackgroundColor)
 	pasteImage(bgImage, countuneVideoImg, 0, 0)
@@ -39,7 +39,7 @@ func PrepareImagesForVideo(vidCfg VideoConfig) {
 	generateVideoTitle(vidCfg)
 
 	fmt.Printf("Generating random Countune picture with %d bars...\n", numCountuneBars)
-	countuneImg := generateRandomCountuneForVideo(vidCfg, numCountuneBars)
+	countuneImg := generateRandomCountuneForVideo(vidCfg.Name, numCountuneBars, numCountuneBarsForLoop)
 
 	fmt.Println("Resizing Countune picture...")
 	resizedCountuneImg := resize.Resize(0, uint(vidCfg.CountuneHeight), countuneImg, resize.NearestNeighbor)
@@ -74,25 +74,56 @@ func generateVideoTitle(vidCfg VideoConfig) *image.RGBA {
 	return titlePic
 }
 
-func generateRandomCountuneForVideo(vidCfg VideoConfig, numBars int) *image.RGBA {
+func generateRandomCountuneForVideo(videoName string, numBars int, numBarsToLoop int) *image.RGBA {
 
-	picMetas := selectRandomCountunePics(numBars)
+	mainPicMetas := selectRandomCountunePics(numBars)
+	loopPicMetas := collectNCountuneBars(mainPicMetas, numBarsToLoop)
+	picMetas := append(mainPicMetas, loopPicMetas...)
+
 	img := combineCountunePics(picMetas)
-	outFilename := vidCfg.Name + OutputRandomCountuneFilenameExt
+	outFilename := videoName + OutputRandomCountuneFilenameExt
 	common.WritePngToFile(filepath.Join(OutputPath, outFilename), img)
 
 	return img
 }
 
-func calculateCountuneSizeForVideo(vidCfg VideoConfig) (int, int) {
+func collectNCountuneBars(picMetas []countuneMeta, n int) []countuneMeta {
+	var result []countuneMeta
+	total := 0
+
+	for _, elem := range picMetas {
+		if total+elem.bars <= n {
+			result = append(result, elem)
+			total += elem.bars
+		} else {
+			remaining := n - total
+			if remaining > 0 {
+				partial := elem
+				partial.bars = remaining
+				result = append(result, partial)
+			}
+			break
+		}
+	}
+	return result
+}
+
+func calculateCountuneSizeForVideo(vidCfg VideoConfig) (int, int, int) {
 	outputBarWidth := vidCfg.CountuneHeight / CountunePicBarWidthToHeightRatio
 	singleScreenScrollSeconds := float64(vidCfg.VideoWidth) / float64(outputBarWidth) / vidCfg.CountuneSpeed
-	countuneScrollSeconds := float64(vidCfg.VideoLen) - float64(vidCfg.TitleDelay) - float64(singleScreenScrollSeconds)
+	titleScrollSeconds := float64(vidCfg.TitleDelay) + float64(singleScreenScrollSeconds)
+	requiredBarsForLoop := 0
 
+	if vidCfg.Loop {
+		requiredBarsForLoop = int(singleScreenScrollSeconds * vidCfg.CountuneSpeed)
+		titleScrollSeconds = 0
+	}
+
+	countuneScrollSeconds := float64(vidCfg.VideoLen) - titleScrollSeconds
 	requiredBarsForVideo := int(countuneScrollSeconds * vidCfg.CountuneSpeed)
-	countuneWidth := requiredBarsForVideo * outputBarWidth
+	countuneWidth := (requiredBarsForVideo + requiredBarsForLoop) * outputBarWidth
 
-	return requiredBarsForVideo, countuneWidth
+	return requiredBarsForVideo, requiredBarsForLoop, countuneWidth
 }
 
 func selectRandomCountunePics(totalBars int) []countuneMeta {

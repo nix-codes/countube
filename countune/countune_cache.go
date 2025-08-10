@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"time"
 
 	// external
 	"github.com/bits-and-blooms/bitset"
@@ -83,14 +85,18 @@ func checkPicsInLocalCache() (*bitset.BitSet, int) {
 
 func downloadMissingPics(cachedPicNums *bitset.BitSet, maxPicNum int, targetPath string) {
 
+	// intermediate pics missing in the cache
 	for i := 0; i < maxPicNum; i++ {
 		if !cachedPicNums.Test(uint(i)) {
 			downloadCountunePic(i, targetPath)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
+	// fetch pics after the last one found in the cache
 	for i := maxPicNum + 1; common.UrlExists(getCountunePicUrl(i)); i++ {
 		downloadCountunePic(i, targetPath)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	fmt.Println("                                                        ")
@@ -101,7 +107,12 @@ func downloadCountunePic(picNum int, targetPath string) {
 	url := getCountunePicUrl(picNum)
 	fileName := fmt.Sprintf("%s/%05d.png", targetPath, picNum)
 	fmt.Printf("Downloading Countune pic#%d\r ...", picNum)
-	common.DownloadFile(url, fileName)
+	err := common.DownloadFile(url, fileName)
+	if err != nil {
+		fmt.Println("\nFound a problem downloading file: ", err)
+		fmt.Println("Aborting.")
+		os.Exit(1)
+	}
 }
 
 func getCountunePicUrl(picNum int) string {

@@ -10,9 +10,8 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
 	"image/jpeg"
-	"math"
+
 	"os"
 	"path/filepath"
 	"time"
@@ -20,9 +19,13 @@ import (
 
 func GenerateImageScrollVideo(vidCfg VideoConfig) {
 
-	titleImgFilename := vidCfg.Name + OutputTitlePicFilenameExt
-	titleImgFilePath := filepath.Join(OutputPath, titleImgFilename)
-	titleImg := common.ReadImageFromFile(titleImgFilePath)
+	var titleImg image.Image
+
+	if !vidCfg.Loop {
+		titleImgFilename := vidCfg.Name + OutputTitlePicFilenameExt
+		titleImgFilePath := filepath.Join(OutputPath, titleImgFilename)
+		titleImg = common.ReadImageFromFile(titleImgFilePath)
+	}
 
 	videoImgFilename := vidCfg.Name + OutputFullVideoImageFilenameExt
 	videoImgFilePath := filepath.Join(OutputPath, videoImgFilename)
@@ -46,8 +49,8 @@ func GenerateImageScrollVideo(vidCfg VideoConfig) {
 	lastElapsedCheckTime := startTime
 	eta := elapsed
 
-	generateImageScrollVideoFrames(titleImg, vidCfg.TitleDelay, videoImg, vidCfg.BackgroundColor,
-		pixelsPerSec, vidCfg.Fps, func(frame image.Image) {
+	generateImageScrollVideoFrames(vidCfg, titleImg, videoImg, pixelsPerSec,
+		func(frame image.Image) {
 
 			fmt.Printf("processing frame: %d / %d  |  elapsed: %s  |  eta: %s                      \r",
 				i+1, totalFrames, elapsed, eta)
@@ -74,17 +77,27 @@ func GenerateImageScrollVideo(vidCfg VideoConfig) {
 	fmt.Println()
 }
 
-func generateImageScrollVideoFrames(titleImg image.Image, titleDelay int, mainImg image.Image, bgColor color.Color,
-	pixelsPerSec int, fps int, frameProcessFn func(image.Image)) {
+func generateImageScrollVideoFrames(vidCfg VideoConfig, titleImg image.Image, mainImg image.Image,
+	pixelsPerSec int, frameProcessFn func(image.Image)) {
 
-	videoWidth := titleImg.Bounds().Dx()
-	videoHeight := titleImg.Bounds().Dy()
+	videoWidth := vidCfg.VideoWidth
+	videoHeight := vidCfg.VideoHeight
+	bgColor := vidCfg.BackgroundColor
+	fps := vidCfg.Fps
+	totalSeconds := vidCfg.VideoLen
+	titleDelay := 0
 
-	totalSeconds := int(math.Ceil(float64(titleDelay) + float64(videoWidth+mainImg.Bounds().Dx())/float64(pixelsPerSec)))
+	imagesToScroll := []image.Image{mainImg}
+
+	if !vidCfg.Loop {
+		imagesToScroll = append([]image.Image{titleImg}, imagesToScroll...)
+		titleDelay = vidCfg.TitleDelay
+	}
+
 	requiredFrames := totalSeconds * fps
 	numTitleFrames := titleDelay * fps
 
-	compoundImg := NewHorizontalImageCompound([]image.Image{titleImg, mainImg}, bgColor)
+	compoundImg := NewHorizontalImageCompound(imagesToScroll, bgColor)
 	frame := image.NewRGBA(image.Rect(0, 0, videoWidth, videoHeight))
 	compoundImg.Draw(frame, 0, videoWidth)
 

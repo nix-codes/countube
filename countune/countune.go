@@ -33,6 +33,7 @@ type VideoConfig struct {
 	VideoWidth      int
 	VideoHeight     int
 	VideoLen        int
+	Loop            bool
 	TitleUpperText  []string
 	TitleLowerText  []string
 	TitleDelay      int
