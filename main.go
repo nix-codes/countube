@@ -7,7 +7,13 @@ import (
 	// standard
 	"fmt"
 	"image/color"
+	"math/rand"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 
@@ -18,7 +24,7 @@ func main() {
 		CountuneSpeed:   1,
 		VideoWidth:      1920,
 		VideoHeight:     1080,
-		VideoLen:        1800,
+		VideoLen:        90,
 		BackgroundColor: color.Black,
 		Loop:            true, // making it true will ignore the title-related params
 		TitleUpperText: []string{
@@ -38,7 +44,7 @@ func main() {
 		},
 	}
 
-	// countune.UpdateLocalCache()
+	//countune.UpdateLocalCache()
 	countune.PrepareImagesForVideo(vidCfg)
 	countune.GenerateImageScrollVideo(vidCfg)
 

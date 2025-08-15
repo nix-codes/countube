@@ -20,7 +20,7 @@ I will work on this and some other improvements soon.
 
 # I created a .frames file. Now how do I make a video out of it?
 The `.frames` file is a concatenation of jpegs, each corresponding to each frame in the video. **_ffmpeg_** tool can help in creating a video out of it. Example:
-`$ ffmpeg -y -framerate 60 -i test.frames out.mp4`
+`$ ffmpeg -y -framerate 30 -i sample.frames out.mp4`
 _Important_:  Make sure that the frame rate provided to **_ffmpeg_** matches the one used to generate the frames file.
 
 # How to add music to the video
@@ -37,4 +37,4 @@ file '/path/to/file3.wav'
 2. Concatenate audio using the list file:
 `$ ffmpeg -f concat -safe 0 -i track_list.txt -c copy sample.wav`
 3. Create a video using the .frames file and the audio file:
-`$ ffmpeg -y -framerate 60 -i sample.frames -i sample.wav sample.mp4`
+`$ ffmpeg -y -framerate 30 -i sample.frames -i sample.wav sample.mp4`
