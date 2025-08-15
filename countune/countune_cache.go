@@ -6,6 +6,8 @@ import (
 
 	// standard
 	"fmt"
+	"image"
+	"image/color"
 	"io/ioutil"
 	"log"
 	"os"
@@ -133,4 +135,99 @@ func parseCountunePicFileName(fileName string) int {
 func getPicFilePath(picNum int) string {
 	fileName := fmt.Sprintf(CountunePicLocalFileNameFmt, picNum)
 	return filepath.Join(CountunePicCachePath, fileName)
+}
+
+func DetermineCountunePictureColors(img image.Image) [3]string {
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	barCount := width / CountunePicOriginalBarWidth
+
+	colors0 := getColorSamplesFromBar(img, 0, CountunePicOriginalBarWidth)
+	colors1 := getColorSamplesFromBar(img, 1, CountunePicOriginalBarWidth)
+	colors, err := determineCountuneColors(colors0[0], colors0[1], colors1[0], colors1[1])
+	fmt.Println(colors0)
+	fmt.Println(colors1)
+
+	if err != nil {
+		fmt.Println("checking from end bars")
+		colors0 = getColorSamplesFromBar(img, barCount-1, CountunePicOriginalBarWidth)
+		colors1 = getColorSamplesFromBar(img, barCount-2, CountunePicOriginalBarWidth)
+		colors, err = determineCountuneColors(colors0[0], colors0[1], colors1[0], colors1[1])
+	}
+
+	if err != nil {
+		fmt.Println("err!!!")
+	}
+
+	fmt.Println(colors)
+
+	evenBarColor := colors[0]
+	oddBarColor := colors[1]
+	backgroundColor := colors[2]
+
+	return [3]string{evenBarColor, oddBarColor, backgroundColor}
+}
+
+func determineCountuneColors(
+	evenBarTopColor, evenBarBottomColor,
+	oddBarTopColor, oddBarBottomColor string,
+) ([]string, error) {
+
+	// Count occurrences
+	counts := make(map[string]int)
+	colorsInput := []string{
+		evenBarTopColor, evenBarBottomColor,
+		oddBarTopColor, oddBarBottomColor,
+	}
+	for _, c := range colorsInput {
+		counts[c]++
+	}
+
+	if len(counts) != 3 {
+		return nil, fmt.Errorf("Cannot determine the colors effectively because we need 3 different colors in the samples.")
+	}
+
+	var result []string
+
+	foundBackgroundColor := false
+	for color, count := range counts {
+		if count == 2 {
+			result[2] = color
+			foundBackgroundColor = true
+			break
+		}
+	}
+
+	if !foundBackgroundColor {
+		return nil, fmt.Errorf("no color appears exactly 3 times")
+	}
+
+	if evenBarTopColor != result[2] {
+		result[0] = evenBarTopColor
+	} else {
+		result[0] = evenBarBottomColor
+	}
+
+	if oddBarTopColor != result[2] {
+		result[1] = oddBarTopColor
+	} else {
+		result[1] = oddBarBottomColor
+	}
+
+	return result, nil
+}
+
+func getColorSamplesFromBar(img image.Image, barIdx int, barWidth int) [2]string {
+	height := img.Bounds().Dy()
+	x := barIdx*barWidth + 1
+	topColor := pixelColorHex(img, x, 1)
+	bottomColor := pixelColorHex(img, x, height-1)
+
+	return [2]string{topColor, bottomColor}
+}
+
+func pixelColorHex(img image.Image, x, y int) string {
+	// we acocunt for the case where there's alpha channel
+	c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
+	return fmt.Sprintf("%02x%02x%02x", c.R, c.G, c.B)
 }

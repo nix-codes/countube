@@ -1,8 +1,6 @@
 package common
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"image"
 	"image/draw"
@@ -131,11 +129,7 @@ func WriteJpegToFile(filePath string, img image.Image) {
 	CheckErr(err)
 	defer outFile.Close()
 
-	buf := new(bytes.Buffer)
-	writer := bufio.NewWriter(outFile)
-
-	jpeg.Encode(buf, img, &jpeg.Options{100})
-	_, err = writer.Write(buf.Bytes())
+	err = jpeg.Encode(outFile, img, &jpeg.Options{Quality: 100})
 	CheckErr(err)
 }
 
