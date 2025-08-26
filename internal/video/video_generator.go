@@ -1,9 +1,11 @@
-package countune
+package video
 
 import (
 	// local
-	"countube/common"
-	"countube/downsampler"
+	"countube/internal/api"
+	"countube/internal/common"
+	"countube/internal/countune"
+	"countube/internal/video/util"
 
 	// standard
 	"bufio"
@@ -17,29 +19,29 @@ import (
 	"time"
 )
 
-func GenerateImageScrollVideo(vidCfg VideoConfig) {
+func GenerateImageScrollVideo(vidCfg api.VideoConfig) {
 
 	var titleImg image.Image
 
 	if !vidCfg.Loop {
-		titleImgFilename := vidCfg.Name + OutputTitlePicFilenameExt
-		titleImgFilePath := filepath.Join(OutputPath, titleImgFilename)
+		titleImgFilename := vidCfg.Name + api.OutputTitlePicFilenameExt
+		titleImgFilePath := filepath.Join(api.OutputPath, titleImgFilename)
 		titleImg = common.ReadImageFromFile(titleImgFilePath)
 	}
 
-	videoImgFilename := vidCfg.Name + OutputFullVideoImageFilenameExt
-	videoImgFilePath := filepath.Join(OutputPath, videoImgFilename)
+	videoImgFilename := vidCfg.Name + api.OutputFullVideoImageFilenameExt
+	videoImgFilePath := filepath.Join(api.OutputPath, videoImgFilename)
 	videoImg := common.ReadImageFromFile(videoImgFilePath)
 
-	framesFilename := vidCfg.Name + OutputVideoFramesFilenameExt
-	outFile, err := os.Create(filepath.Join(OutputPath, framesFilename))
+	framesFilename := vidCfg.Name + api.OutputVideoFramesFilenameExt
+	outFile, err := os.Create(filepath.Join(api.OutputPath, framesFilename))
 	common.CheckErr(err)
 	defer outFile.Close()
 
 	buf := new(bytes.Buffer)
 	writer := bufio.NewWriter(outFile)
 
-	resizedCountuneBarWidth := vidCfg.CountuneHeight / CountunePicBarWidthToHeightRatio
+	resizedCountuneBarWidth := vidCfg.CountuneHeight / countune.CountunePicBarWidthToHeightRatio
 	pixelsPerSec := int(float64(resizedCountuneBarWidth) * vidCfg.CountuneSpeed)
 
 	i := 0
@@ -77,7 +79,7 @@ func GenerateImageScrollVideo(vidCfg VideoConfig) {
 	fmt.Println()
 }
 
-func generateImageScrollVideoFrames(vidCfg VideoConfig, titleImg image.Image, mainImg image.Image,
+func generateImageScrollVideoFrames(vidCfg api.VideoConfig, titleImg image.Image, mainImg image.Image,
 	pixelsPerSec int, frameProcessFn func(image.Image)) {
 
 	videoWidth := vidCfg.VideoWidth
@@ -97,12 +99,12 @@ func generateImageScrollVideoFrames(vidCfg VideoConfig, titleImg image.Image, ma
 	requiredFrames := totalSeconds * fps
 	numTitleFrames := titleDelay * fps
 
-	compoundImg := NewHorizontalImageCompound(imagesToScroll, bgColor)
+	compoundImg := util.NewHorizontalImageCompound(imagesToScroll, bgColor)
 	frame := image.NewRGBA(image.Rect(0, 0, videoWidth, videoHeight))
 	compoundImg.Draw(frame, 0, videoWidth)
 
 	maxFps := pixelsPerSec
-	err, downsampler := downsampler.New(maxFps, fps)
+	err, downsampler := util.NewDownsampler(maxFps, fps)
 	common.CheckErr(err)
 
 	fmt.Println("total seconds  : ", totalSeconds)

@@ -2,7 +2,8 @@ package main
 
 import (
 	// local
-	"countube/countune"
+	"countube/internal/api"
+	"countube/internal/video"
 
 	// standard
 	"fmt"
@@ -17,7 +18,7 @@ func init() {
 
 func main() {
 
-	vidCfg := countune.VideoConfig{
+	vidCfg := api.VideoConfig{
 		Name:            "sample",
 		Fps:             30,
 		CountuneHeight:  800,
@@ -36,7 +37,7 @@ func main() {
 			"Visual Art: Gerd Jansen [2009-]",
 		},
 		TitleDelay: 5,
-		Texts: []countune.VideoText{
+		Texts: []api.VideoText{
 			{
 				Text:         "1. First Track",
 				StartSeconds: 0,
@@ -45,8 +46,8 @@ func main() {
 	}
 
 	//countune.UpdateLocalCache()
-	countune.PrepareImagesForVideo(vidCfg)
-	countune.GenerateImageScrollVideo(vidCfg)
+	video.PrepareImagesForVideo(vidCfg)
+	// countune.GenerateImageScrollVideo(vidCfg)
 
 	fmt.Println("done")
 }

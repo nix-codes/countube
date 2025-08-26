@@ -1,8 +1,8 @@
-package countune
+package util
 
 import (
 	// local
-	"countube/common"
+	"countube/internal/common"
 
 	// standard
 	"image"

@@ -1,7 +1,7 @@
-package countune
+package pic
 
 import (
-	"countube/common"
+	"countube/internal/common"
 
 	"image"
 	"image/color"

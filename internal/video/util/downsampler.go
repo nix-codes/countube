@@ -1,4 +1,4 @@
-package downsampler
+package util
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ type downsampler struct {
 	framesDroppedInCurrentSample int
 }
 
-func New(sourceFps int, targetFps int) (error, *downsampler) {
+func NewDownsampler(sourceFps int, targetFps int) (error, *downsampler) {
 	if targetFps <= 0 || targetFps > 60 {
 		return errors.New("target fps must be a positive value lower than or equal to 60"), nil
 	}

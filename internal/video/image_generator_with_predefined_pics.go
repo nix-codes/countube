@@ -1,8 +1,11 @@
-package countune
+package video
 
 import (
 	// local
-	"countube/common"
+	"countube/internal/api"
+	"countube/internal/common"
+	"countube/internal/countune"
+	"countube/internal/countune/web"
 
 	// standard
 	"fmt"
@@ -17,8 +20,8 @@ import (
 	"github.com/nfnt/resize"
 )
 
-func PrepareImagesForVideo_old(vidCfg VideoConfig) {
-	common.EnsurePath(OutputPath)
+func PrepareImagesForVideo_old(vidCfg api.VideoConfig) {
+	common.EnsurePath(api.OutputPath)
 
 	numCountuneBars, numCountuneBarsForLoop, countuneWidth := calculateCountuneSizeForVideo(vidCfg)
 	countuneVideoImg := image.NewRGBA(image.Rect(0, 0, countuneWidth, vidCfg.VideoHeight))
@@ -41,8 +44,8 @@ func PrepareImagesForVideo_old(vidCfg VideoConfig) {
 	fmt.Println("Adding texts to video image...")
 	drawTextOnVideoImage(countuneVideoImg, vidCfg)
 
-	outFilename := vidCfg.Name + OutputFullVideoImageFilenameExt
-	common.WritePngToFile(filepath.Join(OutputPath, outFilename), countuneVideoImg)
+	outFilename := vidCfg.Name + api.OutputFullVideoImageFilenameExt
+	common.WritePngToFile(filepath.Join(api.OutputPath, outFilename), countuneVideoImg)
 	fmt.Println("Generated image for full video: ", outFilename)
 }
 
@@ -53,25 +56,25 @@ func generateRandomCountuneForVideoUsingWebsitePics(videoName string, numBars in
 	picMetas := append(mainPicMetas, loopPicMetas...)
 
 	img := combineCountunePics(picMetas)
-	outFilename := videoName + OutputRandomCountuneFilenameExt
-	common.WritePngToFile(filepath.Join(OutputPath, outFilename), img)
+	outFilename := videoName + api.OutputRandomCountuneFilenameExt
+	common.WritePngToFile(filepath.Join(api.OutputPath, outFilename), img)
 
 	return img
 }
 
-func collectNCountuneBars(picMetas []countuneMeta, n int) []countuneMeta {
-	var result []countuneMeta
+func collectNCountuneBars(picMetas []web.CountuneMeta, n int) []web.CountuneMeta {
+	var result []web.CountuneMeta
 	total := 0
 
 	for _, elem := range picMetas {
-		if total+elem.bars <= n {
+		if total+elem.Bars <= n {
 			result = append(result, elem)
-			total += elem.bars
+			total += elem.Bars
 		} else {
 			remaining := n - total
 			if remaining > 0 {
 				partial := elem
-				partial.bars = remaining
+				partial.Bars = remaining
 				result = append(result, partial)
 			}
 			break
@@ -80,12 +83,12 @@ func collectNCountuneBars(picMetas []countuneMeta, n int) []countuneMeta {
 	return result
 }
 
-func selectRandomCountunePics(totalBars int) []countuneMeta {
+func selectRandomCountunePics(totalBars int) []web.CountuneMeta {
 
-	availablePics := scanCountunePics(CountunePicCachePath)
+	availablePics := web.ScanCountunePics(web.CountunePicCachePath)
 	fmt.Printf("Found %d Countune pics to choose from.\n", len(availablePics))
 
-	selectedPics := make([]countuneMeta, 0, 100)
+	selectedPics := make([]web.CountuneMeta, 0, 100)
 	rand.Seed(time.Now().UnixNano())
 
 	for remainingBars := totalBars; remainingBars > 0; {
@@ -100,14 +103,14 @@ func selectRandomCountunePics(totalBars int) []countuneMeta {
 
 		// TODO: use a bit set
 		// remove the selected picture from the list of availables
-		tmp := make([]countuneMeta, 0, cap(availablePics))
+		tmp := make([]web.CountuneMeta, 0, cap(availablePics))
 		tmp = append(tmp, availablePics[:selectedPicId]...)
 		tmp = append(tmp, availablePics[selectedPicId+1:]...)
 		availablePics = tmp
 
 		// add the selected pic to the results
-		effectiveBars := common.Min(remainingBars, selectedPic.bars)
-		selectedPic.bars = effectiveBars
+		effectiveBars := common.Min(remainingBars, selectedPic.Bars)
+		selectedPic.Bars = effectiveBars
 		selectedPics = append(selectedPics, selectedPic)
 
 		remainingBars -= effectiveBars
@@ -116,24 +119,24 @@ func selectRandomCountunePics(totalBars int) []countuneMeta {
 	return selectedPics
 }
 
-func combineCountunePics(pics []countuneMeta) *image.RGBA {
+func combineCountunePics(pics []web.CountuneMeta) *image.RGBA {
 	totalBars := 0
 	for i := 0; i < len(pics); i++ {
-		totalBars += pics[i].bars
+		totalBars += pics[i].Bars
 	}
 
-	totalWidth := totalBars * CountunePicOriginalBarWidth
-	outImageRect := image.Rectangle{image.Point{0, 0}, image.Point{totalWidth, CountunePicOriginalHeight}}
+	totalWidth := totalBars * countune.CountunePicOriginalBarWidth
+	outImageRect := image.Rectangle{image.Point{0, 0}, image.Point{totalWidth, countune.CountunePicOriginalHeight}}
 	outImage := image.NewRGBA(outImageRect)
 
 	for i, x := 0, 0; i < len(pics); i++ {
 
 		currentPic := pics[i]
-		picFilePath := getPicFilePath(currentPic.id)
+		picFilePath := web.GetPicFilePath(currentPic.Id)
 		picImage := common.ReadImageFromFile(picFilePath)
 
-		picWidth := currentPic.bars * CountunePicOriginalBarWidth
-		outBounds := image.Rectangle{image.Point{x, 0}, image.Point{x + picWidth, CountunePicOriginalHeight}}
+		picWidth := currentPic.Bars * countune.CountunePicOriginalBarWidth
+		outBounds := image.Rectangle{image.Point{x, 0}, image.Point{x + picWidth, countune.CountunePicOriginalHeight}}
 		draw.Draw(outImage, outBounds, picImage, image.Point{0, 0}, draw.Src)
 
 		x += picWidth

@@ -1,14 +1,13 @@
-package countune
+package pic
 
 import (
 	// local
-	"countube/common"
+	"countube/internal/common"
 
 	// standard
 	"fmt"
 	"image"
 	"image/color"
-	"math"
 	"math/rand"
 )
 
@@ -49,6 +48,17 @@ func init() {
 	}
 }
 
+func GenerateCountuneFromSpec(spec *CountuneCompositeSpec) *image.RGBA {
+
+	composite := NewCountuneComposite(spec.startNum, spec.totalBars)
+	for _, picSpec := range spec.picSpecs {
+		composite.addCountune(picSpec.barCount,
+			picSpec.bgColor, picSpec.barColor1, picSpec.barColor2)
+	}
+
+	return composite.image()
+}
+
 func GenerateRandomCountune(barCount int) *image.RGBA {
 	startNumber := rand.Intn(5000) + 1
 	composite := NewCountuneComposite(startNumber, barCount)
@@ -86,9 +96,9 @@ func NewCountuneComposite(startNumber int, barCount int) *CountuneComposite {
 	}
 }
 
-func (c *CountuneComposite) addCountune(barCount int, backgroundColor int, evenBarColor int, oddBarColor int) {
+func (c *CountuneComposite) addCountune(barCount int, bgColor string, barColor1 string, barColor2 string) {
 
-	c.picEditor.ChangeColors(colors[backgroundColor], colors[evenBarColor], colors[oddBarColor])
+	c.picEditor.ChangeColors(hexToColor(bgColor), hexToColor(barColor1), hexToColor(barColor2))
 	endNum := c.nextNum + barCount - 1
 
 	for i := c.nextNum; i <= endNum; i += 1 {
@@ -96,7 +106,7 @@ func (c *CountuneComposite) addCountune(barCount int, backgroundColor int, evenB
 			c.barPlacement = c.barPlacement.Toggle()
 		}
 
-		y := waveFunction(i)
+		y := countuneFn(i, 5, 1)
 		c.picEditor.DrawBar(y, c.barPlacement)
 	}
 
@@ -105,20 +115,6 @@ func (c *CountuneComposite) addCountune(barCount int, backgroundColor int, evenB
 
 func (c *CountuneComposite) image() *image.RGBA {
 	return c.picEditor.image()
-}
-
-func GenerateCountunePic(startNumber int, barCount int, bgColor int, evenBarColor int, oddBarColor int) {
-
-	composite := NewCountuneComposite(startNumber, barCount)
-	composite.addCountune(barCount, bgColor, evenBarColor, oddBarColor)
-	composite.addCountune(barCount, bgColor, evenBarColor, oddBarColor)
-	composite.picEditor.Write()
-}
-
-// TODO: write it in standard form and parameterize the step and displacement
-func waveFunction(x int) int {
-	m := ((x-1)/10 + 5) % 20
-	return 10 - int(math.Abs(float64(m-10)))
 }
 
 func hexToColor(hex string) color.Color {
@@ -143,7 +139,16 @@ func selectRandomSize(remainingBarCount int) int {
 	return filtered[rand.Intn(len(filtered))]
 }
 
-func selectRandomCountuneColors() [3]int {
+func selectRandomPicSize() int {
+	idx := rand.Intn(len(standardBarCounts))
+	return standardBarCounts[idx]
+}
+
+func selectRandomCountuneColors() [3]string {
 	nums := rand.Perm(60)
-	return [3]int{nums[0], nums[1], nums[2]}
+	bgColor := colorsInHex[nums[0]]
+	barColor1 := colorsInHex[nums[1]]
+	barColor2 := colorsInHex[nums[2]]
+
+	return [3]string{bgColor, barColor1, barColor2}
 }
