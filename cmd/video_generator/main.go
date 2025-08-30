@@ -2,7 +2,7 @@ package main
 
 import (
 	// local
-	"countube/countune"
+	gen "countube/internal/video/generator"
 
 	// standard
 	"fmt"
@@ -17,16 +17,16 @@ func init() {
 
 func main() {
 
-	vidCfg := countune.VideoConfig{
+	vidCfg := gen.VideoConfig{
 		Name:            "sample",
 		Fps:             30,
+		ScreenWidth:     1920,
+		ScreenHeight:    1080,
 		CountuneHeight:  800,
-		CountuneSpeed:   1,
-		VideoWidth:      1920,
-		VideoHeight:     1080,
-		VideoLen:        90,
+		BarWidth:        80,
+		ScrollSpeed:     1,
+		VideoLen:        30,
 		BackgroundColor: color.Black,
-		Loop:            true, // making it true will ignore the title-related params
 		TitleUpperText: []string{
 			"Band Name",
 			"Some Album Name [1984]",
@@ -36,7 +36,7 @@ func main() {
 			"Visual Art: Gerd Jansen [2009-]",
 		},
 		TitleDelay: 5,
-		Texts: []countune.VideoText{
+		Texts: []gen.VideoText{
 			{
 				Text:         "1. First Track",
 				StartSeconds: 0,
@@ -44,9 +44,10 @@ func main() {
 		},
 	}
 
-	//countune.UpdateLocalCache()
-	countune.PrepareImagesForVideo(vidCfg)
-	countune.GenerateImageScrollVideo(vidCfg)
+	gen.PrepareImagesForVideo(vidCfg)
+	ffmpegCmd := gen.BuildVideoGenCommand(vidCfg)
 
-	fmt.Println("done")
+	fmt.Println()
+	fmt.Println("Use the following command to generate the video:")
+	fmt.Println(ffmpegCmd)
 }

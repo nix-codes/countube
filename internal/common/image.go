@@ -1,84 +1,13 @@
 package common
 
 import (
-	"fmt"
+	// standard
 	"image"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
-	"io"
-	"log"
-	"net/http"
 	"os"
 )
-
-func Min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
-}
-
-func Max(a, b int) int {
-	if a >= b {
-		return a
-	}
-	return b
-}
-
-func EnsurePath(path string) {
-
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func FileExists(path string) bool {
-
-	if _, err := os.Stat(path); err == nil {
-		return true
-	}
-
-	return false
-}
-
-func UrlExists(url string) bool {
-	r, e := http.Head(url)
-	return e == nil && r.StatusCode == 200
-}
-
-func DownloadFile(URL, fileName string) error {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", URL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Received non 200 response code: %d", resp.StatusCode)
-	}
-
-	file, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func ConcatImages(leftImg image.Image, rightImg image.Image) *image.RGBA {
 
@@ -145,8 +74,39 @@ func ReadImageFromFile(filePath string) image.Image {
 	return img
 }
 
-func CheckErr(err error) {
-	if err != nil {
-		log.Fatal(err)
+func StitchImagesHorizontally(images []image.Image) *image.RGBA {
+
+	canvas := createStitchedImageCanvas(images)
+
+	x := 0
+	for _, img := range images {
+		b := img.Bounds()
+		dstRect := image.Rect(x, 0, x+b.Dx(), b.Dy())
+		draw.Draw(canvas, dstRect, img, b.Min, draw.Over)
+		x += b.Dx()
 	}
+
+	return canvas
+}
+
+func createStitchedImageCanvas(images []image.Image) *image.RGBA {
+	totalWidth, maxHeight := calculateStitchedImageBounds(images)
+	canvas := image.NewRGBA(image.Rect(0, 0, totalWidth, maxHeight))
+
+	return canvas
+}
+
+func calculateStitchedImageBounds(images []image.Image) (int, int) {
+	totalWidth := 0
+	maxHeight := 0
+
+	for _, img := range images {
+		b := img.Bounds()
+		totalWidth += b.Dx()
+		if b.Dy() > maxHeight {
+			maxHeight = b.Dy()
+		}
+	}
+
+	return totalWidth, maxHeight
 }
