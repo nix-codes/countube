@@ -1,52 +1,45 @@
-package countune
+package generator
 
 import (
 	// local
-	"countube/common"
+	"countube/assets"
+	"countube/internal/common"
+	"countube/internal/countune/pic"
 
 	// standard
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
+	"log"
 	"path/filepath"
 	"strings"
 
 	// external
 	"github.com/fogleman/gg"
-	"github.com/nfnt/resize"
 )
 
-type countuneMeta struct {
-	id     int
-	barSeq int
-	bars   int
-}
+const defaultWaveAmplitude = 10
 
 func PrepareImagesForVideo(vidCfg VideoConfig) {
 	common.EnsurePath(OutputPath)
 
-	numCountuneBars, requiredBarsForLoop, countuneWidth := calculateCountuneSizeForVideo(vidCfg)
-	countuneVideoImg := image.NewRGBA(image.Rect(0, 0, countuneWidth, vidCfg.VideoHeight))
-	bgImage := image.NewUniform(vidCfg.BackgroundColor)
-	pasteImage(bgImage, countuneVideoImg, 0, 0)
+	numCountuneBars, _ := calculateCountuneSizeForVideo(vidCfg)
 
-	generateVideoTitle(vidCfg)
+	fmt.Println("Generating title screen...")
+	titleImg := generateVideoTitlePic(vidCfg.ScreenWidth, vidCfg.ScreenHeight, vidCfg.BackgroundColor,
+		vidCfg.TitleUpperText, vidCfg.TitleLowerText)
 
-	countuneImg := generateRandomCountuneForVideo(vidCfg.Name, numCountuneBars, requiredBarsForLoop)
-
-	fmt.Println("Resizing Countune picture...")
-	resizedCountuneImg := resize.Resize(0, uint(vidCfg.CountuneHeight), countuneImg, resize.NearestNeighbor)
-
-	// we center the countune stripe vertically on the center of the video screen
-	y := (vidCfg.VideoHeight - resizedCountuneImg.Bounds().Dy()) / 2
-	pasteImage(resizedCountuneImg, countuneVideoImg, 0, y)
+	fmt.Println("Generating picture sequence...")
+	countuneStripImg := generateRandomCountuneForVideo(vidCfg, numCountuneBars, 0)
 
 	fmt.Println("Adding texts to video image...")
-	drawTextOnVideoImage(countuneVideoImg, vidCfg)
+	drawTextOnVideoImage(countuneStripImg, vidCfg)
+
+	videoImg := common.StitchImagesHorizontally([]image.Image{titleImg, countuneStripImg})
 
 	outFilename := vidCfg.Name + OutputFullVideoImageFilenameExt
-	common.WritePngToFile(filepath.Join(OutputPath, outFilename), countuneVideoImg)
+	common.WritePngToFile(filepath.Join(OutputPath, outFilename), videoImg)
 	fmt.Println("Generated image for full video: ", outFilename)
 }
 
@@ -58,30 +51,39 @@ func pasteImage(sourceImg image.Image, targetImg *image.RGBA, targetImgX int, ta
 	draw.Draw(targetImg, tgtImgBounds, sourceImg, image.ZP, draw.Src)
 }
 
-func generateVideoTitle(vidCfg VideoConfig) *image.RGBA {
-	fmt.Println("Generating title screen...")
-	titlePic := generateVideoTitlePic(vidCfg.VideoWidth, vidCfg.VideoHeight, vidCfg.BackgroundColor,
-		vidCfg.TitleUpperText, vidCfg.TitleLowerText)
-	outFilename := vidCfg.Name + OutputTitlePicFilenameExt
-	common.WritePngToFile(filepath.Join(OutputPath, outFilename), titlePic)
-	fmt.Println("Wrote " + outFilename)
-	fmt.Println()
-
-	return titlePic
-}
-
-func generateRandomCountuneForVideo(videoName string, numBars int, numBarsToLoop int) *image.RGBA {
+func generateRandomCountuneForVideo(vidCfg VideoConfig, numBars, numBarsToLoop int) *image.RGBA {
+	videoHeight := vidCfg.ScreenHeight
+	countuneHeight := vidCfg.CountuneHeight
 
 	fmt.Printf("Generating random Countune picture with %d bars...\n", numBars)
-	img := GenerateRandomCountune(numBars)
-	img = appendImageLeftSegment(img, numBarsToLoop*CountunePicOriginalBarWidth)
-
-	outFilename := videoName + OutputRandomCountuneFilenameExt
-	common.WritePngToFile(filepath.Join(OutputPath, outFilename), img)
-	fmt.Println("Wrote " + outFilename)
-	fmt.Println()
+	img := generateRandomCountune(videoHeight, countuneHeight, numBars)
 
 	return img
+}
+
+func generateRandomCountune(picHeight int, stripeHeight int, numBars int) *image.RGBA {
+	if stripeHeight%defaultWaveAmplitude != 0 {
+		log.Fatalf("Stripe height must be divisible by %d", defaultWaveAmplitude)
+	}
+
+	barWidth := stripeHeight / defaultWaveAmplitude
+
+	countuneSpec := pic.RandomCountuneSpec(picHeight, barWidth)
+	var picSpecs []pic.CountunePicSpec
+	remainingBars := numBars
+
+	for remainingBars > 0 {
+		picSpec := pic.RandomPicSpec()
+		adjustedNumBars := min(picSpec.NumBars, remainingBars)
+		picSpec.NumBars = adjustedNumBars
+
+		picSpecs = append(picSpecs, picSpec)
+		remainingBars -= picSpec.NumBars
+	}
+
+	picSeq := pic.NewFixedPicSeq(countuneSpec, picSpecs)
+
+	return pic.BuildCountuneStrip(picSeq)
 }
 
 func appendImageLeftSegment(img *image.RGBA, segmentWidth int) *image.RGBA {
@@ -101,22 +103,15 @@ func appendImageLeftSegment(img *image.RGBA, segmentWidth int) *image.RGBA {
 	return newImg
 }
 
-func calculateCountuneSizeForVideo(vidCfg VideoConfig) (int, int, int) {
-	outputBarWidth := vidCfg.CountuneHeight / CountunePicBarWidthToHeightRatio
-	singleScreenScrollSeconds := float64(vidCfg.VideoWidth) / float64(outputBarWidth) / vidCfg.CountuneSpeed
+func calculateCountuneSizeForVideo(vidCfg VideoConfig) (int, int) {
+	scrollPixelsPerSec := vidCfg.ScrollSpeed * float64(vidCfg.BarWidth)
+	singleScreenScrollSeconds := float64(vidCfg.ScreenWidth) / scrollPixelsPerSec
 	titleScrollSeconds := float64(vidCfg.TitleDelay) + float64(singleScreenScrollSeconds)
-	requiredBarsForLoop := 0
-
-	if vidCfg.Loop {
-		requiredBarsForLoop = int(singleScreenScrollSeconds * vidCfg.CountuneSpeed)
-		titleScrollSeconds = 0
-	}
-
 	countuneScrollSeconds := float64(vidCfg.VideoLen) - titleScrollSeconds
-	requiredBarsForVideo := int(countuneScrollSeconds * vidCfg.CountuneSpeed)
-	countuneWidth := (requiredBarsForVideo + requiredBarsForLoop) * outputBarWidth
+	requiredBarsForVideo := int(countuneScrollSeconds * vidCfg.ScrollSpeed)
+	countuneWidth := requiredBarsForVideo * vidCfg.BarWidth
 
-	return requiredBarsForVideo, requiredBarsForLoop, countuneWidth
+	return requiredBarsForVideo, countuneWidth
 }
 
 // TODO: improve this mess
@@ -132,7 +127,6 @@ func generateVideoTitlePic(width int, height int, bgColor color.Color, upperText
 	lowerTextFontSize := 60.0 * scaleFactor
 	upperTextColor := color.RGBA{0, 255, 0, 255}
 	lowerTextColor := color.RGBA{0, 100, 255, 255}
-	fontPath := FontPath
 
 	rgbaBounds := image.Rectangle{image.Point{0, 0}, image.Point{width, height}}
 	rgba := image.NewRGBA(rgbaBounds)
@@ -148,18 +142,18 @@ func generateVideoTitlePic(width int, height int, bgColor color.Color, upperText
 	upperTextY := (height - totalTextHeight) / 2
 	lowerTextY := upperTextY + totalTextHeight - lowerTextBoxSize
 
-	img1 := drawTextOnImage(rgba, image.Rectangle{image.ZP, image.Point{width, height}}, float64(upperTextY), fontPath, upperTextFontSize, upperTextColor, upperTextString)
+	img1 := drawTextOnImage(rgba, image.Rectangle{image.ZP, image.Point{width, height}}, float64(upperTextY), upperTextFontSize, upperTextColor, upperTextString)
 	rgba2 := image.NewRGBA(rgbaBounds)
 	draw.Draw(rgba2, image.Rectangle{image.ZP, image.Point{width, height}}, img1, image.ZP, draw.Src)
 
-	img2 := drawTextOnImage(rgba2, image.Rectangle{image.ZP, image.Point{width, height}}, float64(lowerTextY), fontPath, lowerTextFontSize, lowerTextColor, lowerTextString)
+	img2 := drawTextOnImage(rgba2, image.Rectangle{image.ZP, image.Point{width, height}}, float64(lowerTextY), lowerTextFontSize, lowerTextColor, lowerTextString)
 	rgba3 := image.NewRGBA(rgbaBounds)
 	draw.Draw(rgba3, image.Rectangle{image.ZP, image.Point{width, height}}, img2, image.ZP, draw.Src)
 
 	return rgba3
 }
 
-func drawTextOnImage(rgba *image.RGBA, bounds image.Rectangle, y float64, fontFilePath string, fontSize float64,
+func drawTextOnImage(rgba *image.RGBA, bounds image.Rectangle, y float64, fontSize float64,
 	color color.RGBA, text string) image.Image {
 
 	width := bounds.Max.X - bounds.Min.X
@@ -167,9 +161,7 @@ func drawTextOnImage(rgba *image.RGBA, bounds image.Rectangle, y float64, fontFi
 
 	dc := gg.NewContext(width, height)
 	dc.DrawImage(rgba, 0, 0)
-
-	err := dc.LoadFontFace(fontFilePath, fontSize)
-	common.CheckErr(err)
+	dc.SetFontFace(assets.WhitrabtFont(fontSize))
 
 	x := float64(width / 2)
 	maxWidth := float64(width) - float64(fontSize)
@@ -185,19 +177,19 @@ func drawTextOnVideoImage(img *image.RGBA, vidCfg VideoConfig) image.Image {
 	color := color.RGBA{230, 150, 60, 255}
 
 	dc := gg.NewContextForRGBA(img)
-	dc.LoadFontFace(FontPath, fontSize)
+	dc.SetFontFace(assets.WhitrabtFont(fontSize))
+
 	dc.SetColor(color)
 	vidTxts := vidCfg.Texts
-	barWidth := vidCfg.CountuneHeight / CountunePicBarWidthToHeightRatio
 
 	for i := 0; i < len(vidTxts); i++ {
 		vidTxt := vidTxts[i]
-		emptyUpperHeight := (vidCfg.VideoHeight - vidCfg.CountuneHeight) / 2
+		emptyUpperHeight := (vidCfg.ScreenHeight - vidCfg.CountuneHeight) / 2
 		_, h := dc.MeasureString(vidTxt.Text)
 		y := (float64(emptyUpperHeight)-h)/2.0 + h
 
-		startBar := common.Max(0, int(vidCfg.CountuneSpeed*float64(vidTxt.StartSeconds-vidCfg.TitleDelay)))
-		x := startBar * barWidth
+		startBar := common.Max(0, int(vidCfg.ScrollSpeed*float64(vidTxt.StartSeconds-vidCfg.TitleDelay)))
+		x := startBar * vidCfg.BarWidth
 		dc.DrawString(vidTxt.Text, float64(x), y)
 	}
 
