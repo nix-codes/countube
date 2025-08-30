@@ -1,5 +1,13 @@
 package common
 
+import (
+	"math/rand"
+)
+
+func Chance(p float64) bool {
+	return rand.Float64() < p
+}
+
 func IsPrime(n int) bool {
 	if n < 2 {
 		return false

@@ -14,9 +14,9 @@ func main() {
 
 	config := play.Config{
 		ScreenWidth:  1920,
-		ScreenHeight: 600,
-		BarWidth:     60,
-		ScrollSpeed:  2,
+		ScreenHeight: 400,
+		BarWidth:     40,
+		ScrollSpeed:  1,
 	}
 
 	play.Play(config)

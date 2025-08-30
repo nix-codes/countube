@@ -22,11 +22,21 @@ const (
 	DOWN
 )
 
+type WaveSpec struct {
+	Amplitude        int
+	Step             int
+	StepChangeProb   float64
+	InitialX         int
+	InitialHeight    int
+	InitialDirection WaveDirection
+}
+
 type CountuneSpec struct {
 	PicHeight            int
 	BarWidth             int
 	WaveAmplitude        int
 	WaveStep             int
+	WaveStepChangeProb   float64
 	InitialNum           int
 	InitialWaveHeight    int
 	InitialWaveDirection WaveDirection
@@ -76,7 +86,8 @@ func RandomCountuneSpec(picHeight, barWidth int) CountuneSpec {
 		PicHeight:            picHeight,
 		BarWidth:             barWidth,
 		WaveAmplitude:        defaultWaveAmplitude,
-		WaveStep:             5,
+		WaveStep:             10,
+		WaveStepChangeProb:   0.4,
 		InitialNum:           rand.Intn(maxStartNum + 1),
 		InitialWaveHeight:    rand.Intn(defaultWaveAmplitude + 1),
 		InitialWaveDirection: waveDirection,

@@ -1,13 +1,19 @@
 package play
 
 import (
+	// local
 	"countube/internal/countune/pic"
 
+	// standard
+	"fmt"
 	"image/color"
 	"log"
 	"time"
 
+	// third-party
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Config struct {
@@ -22,8 +28,11 @@ type video struct {
 	imageQueue   []*ebiten.Image
 	picSeq       *pic.OnTheFlyPicSeq
 	scrollOffset float64
-	scrollSpeed  float64 // pixels per second
+	scrollSpeed  float64
+	msg          string
+	msgStart     time.Time
 	lastUpdate   time.Time
+	paused       bool
 }
 
 func Play(config Config) {
@@ -54,8 +63,9 @@ func newVideo(config Config) *video {
 		config:       config,
 		imageQueue:   []*ebiten.Image{},
 		scrollOffset: 0,
-		scrollSpeed:  config.ScrollSpeed * float64(config.BarWidth),
+		scrollSpeed:  config.ScrollSpeed,
 		picSeq:       picSeq,
+		paused:       false,
 	}
 
 	// Pre-fill queue to cover screen width
@@ -70,6 +80,37 @@ func newVideo(config Config) *video {
 }
 
 func (v *video) Update() error {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		v.paused = !v.paused
+		v.lastUpdate = time.Now()
+		v.msgStart = v.lastUpdate
+
+		if v.paused {
+			v.msg = "Paused"
+		} else {
+			v.msg = ""
+		}
+
+	}
+
+	if v.paused {
+		return nil
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		v.scrollSpeed += 0.5
+		v.msg = fmt.Sprintf("Speed: %.01f bars/s", v.scrollSpeed)
+		v.msgStart = time.Now()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
+		v.scrollSpeed -= 0.5
+		if v.scrollSpeed < 0 {
+			v.scrollSpeed = 0
+		}
+		v.msg = fmt.Sprintf("Speed: %.01f bars/s", v.scrollSpeed)
+		v.msgStart = time.Now()
+	}
+
 	now := time.Now()
 	if v.lastUpdate.IsZero() {
 		v.lastUpdate = now
@@ -78,7 +119,7 @@ func (v *video) Update() error {
 
 	dt := now.Sub(v.lastUpdate).Seconds()
 	v.lastUpdate = now
-	v.scrollOffset += v.scrollSpeed * dt
+	v.scrollOffset += v.scrollSpeed * float64(v.config.BarWidth) * dt
 
 	// Remove images that have fully scrolled past
 	for len(v.imageQueue) > 0 && v.scrollOffset >= float64(v.imageQueue[0].Bounds().Dx()) {
@@ -111,6 +152,10 @@ func (v *video) Draw(screen *ebiten.Image) {
 		op.GeoM.Translate(xPos, 0)
 		screen.DrawImage(img, op)
 		xPos += float64(img.Bounds().Dx())
+	}
+
+	if v.msg != "" && time.Since(v.msgStart) < 2*time.Second {
+		ebitenutil.DebugPrintAt(screen, v.msg, 10, 10)
 	}
 }
 
