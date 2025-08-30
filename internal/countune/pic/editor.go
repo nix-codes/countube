@@ -22,8 +22,7 @@ type picEditor struct {
 	pixelsPerUnit     int
 	maxBarHeightUnits int
 	topCoord          int
-	// barPlacement      BarPlacement
-	barIdx int
+	barIdx            int
 }
 
 func newPicEditor(picHeight int, pixelsPerUnit int, maxBars int, maxBarHeightUnits int,
@@ -49,8 +48,7 @@ func newPicEditor(picHeight int, pixelsPerUnit int, maxBars int, maxBarHeightUni
 		pixelsPerUnit:     pixelsPerUnit,
 		maxBarHeightUnits: maxBarHeightUnits,
 		topCoord:          stripeTopCoord,
-		// barPlacement:      initialBarPlacement,
-		barIdx: 0,
+		barIdx:            0,
 	}
 }
 
@@ -63,10 +61,6 @@ func (e *picEditor) changeColors(backgroundColor color.Color, barColor1 color.Co
 	e.barColor1 = barColor1
 	e.barColor2 = barColor2
 }
-
-// func (e *picEditor) ToggleBarPlacement() {
-// 	e.barPlacement := e.barPlacement.Toggle()
-// }
 
 func (e *picEditor) drawBar(waveHeightInUnits int, barPlacement BarPlacement) {
 	var barColor color.Color

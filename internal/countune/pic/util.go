@@ -5,9 +5,10 @@ package pic
  **/
 
 import (
+	// local
 	"countube/internal/common"
-	// "countube/internal/countune"
 
+	// standard
 	"fmt"
 	"image"
 	"image/color"
