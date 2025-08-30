@@ -1,20 +1,19 @@
-package api
+package generator
 
 import (
-	// standard
 	"image/color"
 )
 
 type VideoConfig struct {
 	Name            string
-	Fps             int
-	CountuneHeight  int
-	CountuneSpeed   float64
+	ScreenWidth     int
+	ScreenHeight    int
 	BackgroundColor color.Color
-	VideoWidth      int
-	VideoHeight     int
+	CountuneHeight  int
+	BarWidth        int
+	ScrollSpeed     float64 // bars per second
+	Fps             int
 	VideoLen        int
-	Loop            bool
 	TitleUpperText  []string
 	TitleLowerText  []string
 	TitleDelay      int

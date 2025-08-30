@@ -1,23 +1,10 @@
 package pic
 
 import (
-	// "countube/internal/common"
-
 	"image"
 	"image/color"
 	"image/draw"
 )
-
-// type BarPlacement int
-
-// const (
-// 	BELOW_WAVE BarPlacement = iota
-// 	ABOVE_WAVE
-// )
-
-// func (bp BarPlacement) Toggle() BarPlacement {
-// 	return 1 - bp
-// }
 
 type StripePlacement int
 
@@ -28,24 +15,31 @@ const (
 )
 
 type picEditor struct {
-	backgroundColor color.Color
-	barColor1       color.Color
-	barColor2       color.Color
-	canvas          *image.RGBA
-	pixelsPerUnit   int
-	// stripePlacement StripePlacement
+	backgroundColor   color.Color
+	barColor1         color.Color
+	barColor2         color.Color
+	canvas            *image.RGBA
+	pixelsPerUnit     int
 	maxBarHeightUnits int
 	topCoord          int
-	barPlacement      BarPlacement
-	barIdx            int
+	// barPlacement      BarPlacement
+	barIdx int
 }
 
-func NewPicEditor(picHeight int, pixelsPerUnit int, maxBars int, maxBarHeightUnits int, stripePlacement StripePlacement,
-	initialBarPlacement BarPlacement) *picEditor {
+func newPicEditor(picHeight int, pixelsPerUnit int, maxBars int, maxBarHeightUnits int,
+	stripePlacement StripePlacement) *picEditor {
 
 	picWidth := maxBars * pixelsPerUnit
 	canvas := image.NewRGBA(image.Rect(0, 0, picWidth, picHeight))
-	// stripeTopCoord := 0
+
+	stripeTopCoord := 0
+	maxBarHeight := maxBarHeightUnits * pixelsPerUnit
+
+	if stripePlacement == CENTER {
+		stripeTopCoord = (picHeight - maxBarHeight) / 2
+	} else if stripePlacement == BOTTOM {
+		stripeTopCoord = picHeight - maxBarHeight
+	}
 
 	return &picEditor{
 		backgroundColor:   color.Black,
@@ -54,10 +48,9 @@ func NewPicEditor(picHeight int, pixelsPerUnit int, maxBars int, maxBarHeightUni
 		canvas:            canvas,
 		pixelsPerUnit:     pixelsPerUnit,
 		maxBarHeightUnits: maxBarHeightUnits,
-		//stripePlacement: stripePlacement,
-		topCoord:     0, // fix this taking into account the stripe placement
-		barPlacement: initialBarPlacement,
-		barIdx:       0,
+		topCoord:          stripeTopCoord,
+		// barPlacement:      initialBarPlacement,
+		barIdx: 0,
 	}
 }
 
@@ -65,17 +58,17 @@ func (e *picEditor) image() *image.RGBA {
 	return e.canvas
 }
 
-func (e *picEditor) ChangeColors(backgroundColor color.Color, barColor1 color.Color, barColor2 color.Color) {
+func (e *picEditor) changeColors(backgroundColor color.Color, barColor1 color.Color, barColor2 color.Color) {
 	e.backgroundColor = backgroundColor
 	e.barColor1 = barColor1
 	e.barColor2 = barColor2
 }
 
-func (e *picEditor) ToggleBarPlacement() {
-	e.barPlacement.Toggle()
-}
+// func (e *picEditor) ToggleBarPlacement() {
+// 	e.barPlacement := e.barPlacement.Toggle()
+// }
 
-func (e *picEditor) DrawBar2(waveHeightInUnits int, barPlacement BarPlacement) {
+func (e *picEditor) drawBar(waveHeightInUnits int, barPlacement BarPlacement) {
 	var barColor color.Color
 
 	if e.barIdx%2 == 0 {

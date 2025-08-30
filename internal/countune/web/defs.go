@@ -11,6 +11,7 @@ const (
 	CountunePicUrlFmt                = "https://www.countune.com/system/modules/xcountune/html/countunes/countune_%d.png"
 	CountunePicLocalFilenameRegexStr = "([0-9]{5}).png"
 	CountunePicLocalFileNameFmt      = "%05d.png"
+	CountunePicOriginalBarWidth      = 20
 )
 
 type CountuneMeta struct {
@@ -25,5 +26,4 @@ func init() {
 	var err error
 	specRepo, err = NewCountuneSpecRepo()
 	common.CheckErr(err)
-
 }
